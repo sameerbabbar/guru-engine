@@ -37,6 +37,10 @@ class AuditFormSubmit(BaseModel):
     primary_bottleneck: str
     co_founder_dynamics: str
 
+@app.get("/")
+async def root():
+    return {"status": "Sameer Babbar Advisory Engine is Active", "version": "1.0"}
+
 @app.post("/api/audit/submit")
 async def process_audit_form(data: AuditFormSubmit):
     prompt = f"""
@@ -80,7 +84,7 @@ async def process_audit_form(data: AuditFormSubmit):
             try:
                 # Using resend.dev for testing. Must verify domain on Resend for production.
                 resend.Emails.send({
-                    "from": "onboarding@resend.dev",
+                    "from": "advisory@sameerbabbar.com",
                     "to": "sbabbar@sameerbabbar.com",
                     "subject": f"🚀 HIGH-TICKET LEAD: {data.name}",
                     "html": f"<h2>Lead Profile</h2><p><strong>Name:</strong> {data.name}<br><strong>Email:</strong> {data.email}<br><strong>Revenue:</strong> {data.annual_revenue}</p><h2>Internal Briefing</h2><p>{evaluation.get('internal_briefing')}</p>"
