@@ -80,14 +80,46 @@ async def process_audit_form(data: AuditFormSubmit):
         score = int(evaluation.get("score", 0))
         
         if score >= 5:
-            # Send Email to Sameer
+            # 1. Generate Stripe Checkout sessions FIRST so we can include links in both emails
+            checkout_premium = stripe.checkout.Session.create(
+                payment_method_types=['card'],
+                line_items=[{
+                    'price_data': {
+                        'currency': 'usd',
+                        'product_data': {'name': 'Full Strategic Alignment Diagnostic'},
+                        'unit_amount': 50000,
+                    },
+                    'quantity': 1,
+                }],
+                mode='payment',
+                customer_email=data.email,
+                success_url='https://sameerbabbar.com/success',
+            )
+            
+            checkout_triage = stripe.checkout.Session.create(
+                payment_method_types=['card'],
+                line_items=[{
+                    'price_data': {
+                        'currency': 'usd',
+                        'product_data': {'name': '15-Min Alignment Triage'},
+                        'unit_amount': 9500,
+                    },
+                    'quantity': 1,
+                }],
+                mode='payment',
+                customer_email=data.email,
+                success_url='https://sameerbabbar.com/success',
+            )
+            
+            # Format text parameters for clean HTML rendering
+            dynamics = data.co_founder_dynamics
+            bottleneck = data.primary_bottleneck.replace('\n', '<br>')
+            briefing_html = evaluation.get('internal_briefing', '').replace('\n', '<br>')
+            diagnosis_html = evaluation.get('diagnosis', '').replace('\n', '<br>')
+
+            # 2. Send Executive Report Email to Sameer & Bigpond
             try:
-                # Format parameters for clean email display
-                dynamics = data.co_founder_dynamics
-                bottleneck = data.primary_bottleneck.replace('\n', '<br>')
-                briefing_html = evaluation.get('internal_briefing', '').replace('\n', '<br>')
-                
-                email_body = f"""
+                sameer_email_body = f"""
                 <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f4f4f4; padding: 30px; color: #333;">
                     <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border: 1px solid #e1e1e1; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
                         <!-- Header -->
@@ -140,48 +172,75 @@ async def process_audit_form(data: AuditFormSubmit):
                     </div>
                 </div>
                 """
-
                 resend.Emails.send({
                     "from": "advisory@sameerbabbar.com",
-                    "to": ["sbabbar@sameerbabbar.com", "sbabbar@bigpond.com"],
+                    "to": "sbabbar@sameerbabbar.com",
                     "subject": f"🚀 HIGH-TICKET LEAD: {data.name} ({data.company_stage})",
-                    "html": email_body
+                    "html": sameer_email_body
                 })
-                print("Email dispatched to Sameer successfully.")
+                print("Internal Briefing email sent to Sameer & Bigpond successfully.")
             except Exception as email_err:
-                print(f"Resend Error (Sameer): {email_err}")
+                print(f"Resend Error (Sameer Internal): {email_err}")
 
-            # Generate Premium Checkout
-            checkout_premium = stripe.checkout.Session.create(
-                payment_method_types=['card'],
-                line_items=[{
-                    'price_data': {
-                        'currency': 'usd',
-                        'product_data': {'name': 'Full Strategic Alignment Diagnostic'},
-                        'unit_amount': 50000,
-                    },
-                    'quantity': 1,
-                }],
-                mode='payment',
-                customer_email=data.email,
-                success_url='https://sameerbabbar.com/success',
-            )
-            
-            # Generate Triage Checkout
-            checkout_triage = stripe.checkout.Session.create(
-                payment_method_types=['card'],
-                line_items=[{
-                    'price_data': {
-                        'currency': 'usd',
-                        'product_data': {'name': '15-Min Alignment Triage'},
-                        'unit_amount': 9500,
-                    },
-                    'quantity': 1,
-                }],
-                mode='payment',
-                customer_email=data.email,
-                success_url='https://sameerbabbar.com/success',
-            )
+            # 3. Send Branded Confirmation and Payment Link Email to the CLIENT
+            try:
+                client_email_body = f"""
+                <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f4f4f4; padding: 30px; color: #333;">
+                    <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border: 1px solid #e1e1e1; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
+                        <!-- Header -->
+                        <div style="background-color: #1a1a1a; color: #ffffff; padding: 40px 30px; text-align: center; border-bottom: 4px solid #ffcc00;">
+                            <h1 style="margin: 0; font-size: 18px; letter-spacing: 2px; text-transform: uppercase; font-weight: 700;">Sameer Babbar Advisory</h1>
+                            <p style="margin: 8px 0 0 0; font-size: 10px; color: #ffcc00; text-transform: uppercase; letter-spacing: 1.5px; font-weight: bold;">Strategic Diagnostic Assessment</p>
+                        </div>
+                        
+                        <!-- Content Body -->
+                        <div style="padding: 35px 30px;">
+                            <p style="font-size: 15px; line-height: 1.6; color: #222;">Dear {data.name},</p>
+                            <p style="font-size: 15px; line-height: 1.6; color: #222;">Your Strategic Alignment Audit has been processed by our advisory concierge. A proprietary screening has been executed regarding your reported primary bottleneck.</p>
+                            
+                            <!-- Custom Diagnosis Narrative -->
+                            <div style="background-color: #fafafa; border-left: 4px solid #1a1a1a; padding: 20px; font-size: 14px; line-height: 1.7; color: #333; margin: 25px 0; font-style: italic;">
+                                "{diagnosis_html}"
+                            </div>
+                            
+                            <p style="font-size: 15px; line-height: 1.6; color: #222; margin-bottom: 25px;">To secure your structural alignment session and access your customized diagnostic architecture, please finalize your booking via your private, secure portal links below:</p>
+                            
+                            <!-- Option A -->
+                            <div style="border: 1px solid #eee; padding: 20px; background-color: #ffffff; margin-bottom: 20px; text-align: center;">
+                                <h3 style="margin-top: 0; font-size: 14px; text-transform: uppercase; color: #1a1a1a; letter-spacing: 0.5px;">Path A: Full Strategic Diagnostic</h3>
+                                <p style="font-size: 13px; color: #666; margin: 5px 0 15px 0;">1-Hour Full Strategic Alignment Session. Custom diagnostic report and action plan.</p>
+                                <a href="{checkout_premium.url}" style="display: inline-block; padding: 12px 24px; background-color: #ffcc00; color: #000; text-decoration: none; font-weight: bold; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Book Full Session ($500)</a>
+                            </div>
+                            
+                            <!-- Option B -->
+                            <div style="border: 1px solid #eee; padding: 20px; background-color: #ffffff; text-align: center;">
+                                <h3 style="margin-top: 0; font-size: 14px; text-transform: uppercase; color: #1a1a1a; letter-spacing: 0.5px;">Path B: 15-Minute Alignment Triage</h3>
+                                <p style="font-size: 13px; color: #666; margin: 5px 0 15px 0;">Discovery Litmus Test to ensure mutual fit for an ongoing commitment.</p>
+                                <a href="{checkout_triage.url}" style="display: inline-block; padding: 12px 24px; background-color: #ffffff; color: #000; border: 2px solid #000; text-decoration: none; font-weight: bold; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Book Triage Session ($95)</a>
+                            </div>
+                            
+                            <p style="font-size: 13px; line-height: 1.6; color: #777; margin-top: 30px; text-align: center; font-style: italic;">
+                                True scale requires conviction. Invest decisively in your structural foundation, and give the market the opportunity to mirror your absolute conviction.
+                            </p>
+                        </div>
+                        
+                        <!-- Footer -->
+                        <div style="background-color: #fafafa; border-top: 1px solid #eee; padding: 25px; text-align: center; font-size: 11px; color: #888; line-height: 1.5;">
+                            This message is confidential and intended solely for the recipient.<br>
+                            &copy; Sameer Babbar Advisory. All rights reserved.
+                        </div>
+                    </div>
+                </div>
+                """
+                resend.Emails.send({
+                    "from": "advisory@sameerbabbar.com",
+                    "to": data.email,
+                    "subject": f"🔒 Strategic Diagnostic Portal: {data.name}",
+                    "html": client_email_body
+                })
+                print(f"Branded booking portal email sent to client ({data.email}) successfully.")
+            except Exception as client_email_err:
+                print(f"Resend Error (Client): {client_email_err}")
             
             return {
                 "status": "qualified", 
