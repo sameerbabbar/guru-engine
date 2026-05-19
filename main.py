@@ -143,7 +143,7 @@ async def process_audit_form(data: AuditFormSubmit):
 
                 resend.Emails.send({
                     "from": "advisory@sameerbabbar.com",
-                    "to": "sbabbar@sameerbabbar.com",
+                    "to": ["sbabbar@sameerbabbar.com", "sbabbar@bigpond.com"],
                     "subject": f"🚀 HIGH-TICKET LEAD: {data.name} ({data.company_stage})",
                     "html": email_body
                 })
