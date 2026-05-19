@@ -82,12 +82,70 @@ async def process_audit_form(data: AuditFormSubmit):
         if score >= 5:
             # Send Email to Sameer
             try:
-                # Using resend.dev for testing. Must verify domain on Resend for production.
+                # Format parameters for clean email display
+                dynamics = data.co_founder_dynamics
+                bottleneck = data.primary_bottleneck.replace('\n', '<br>')
+                briefing_html = evaluation.get('internal_briefing', '').replace('\n', '<br>')
+                
+                email_body = f"""
+                <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f4f4f4; padding: 30px; color: #333;">
+                    <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border: 1px solid #e1e1e1; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
+                        <!-- Header -->
+                        <div style="background-color: #1a1a1a; color: #ffffff; padding: 40px 30px; text-align: center; border-bottom: 4px solid #ffcc00;">
+                            <h1 style="margin: 0; font-size: 20px; letter-spacing: 2px; text-transform: uppercase; font-weight: 700;">Sameer Babbar Advisory</h1>
+                            <p style="margin: 8px 0 0 0; font-size: 11px; color: #ffcc00; text-transform: uppercase; letter-spacing: 1.5px; font-weight: bold;">Internal Lead Intelligence Report</p>
+                        </div>
+                        
+                        <!-- Content Body -->
+                        <div style="padding: 35px 30px;">
+                            <h2 style="font-size: 15px; margin-top: 0; margin-bottom: 15px; border-bottom: 2px solid #1a1a1a; padding-bottom: 8px; text-transform: uppercase; color: #1a1a1a; letter-spacing: 0.5px;">Lead Profile</h2>
+                            <table style="width: 100%; border-collapse: collapse; margin-bottom: 35px; font-size: 14px;">
+                                <tr>
+                                    <td style="padding: 12px 0; border-bottom: 1px solid #f0f0f0; font-weight: bold; width: 160px; color: #666; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px;">Full Name:</td>
+                                    <td style="padding: 12px 0; border-bottom: 1px solid #f0f0f0; font-weight: bold; color: #1a1a1a; font-size: 15px;">{data.name}</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 12px 0; border-bottom: 1px solid #f0f0f0; font-weight: bold; color: #666; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px;">Work Email:</td>
+                                    <td style="padding: 12px 0; border-bottom: 1px solid #f0f0f0; color: #1a1a1a; font-size: 14px;"><a href="mailto:{data.email}" style="color: #1a1a1a; text-decoration: underline;">{data.email}</a></td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 12px 0; border-bottom: 1px solid #f0f0f0; color: #666; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px;">Company Stage:</td>
+                                    <td style="padding: 12px 0; border-bottom: 1px solid #f0f0f0; color: #1a1a1a; font-weight: 500;">{data.company_stage}</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 12px 0; border-bottom: 1px solid #f0f0f0; color: #666; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px;">Annual Revenue:</td>
+                                    <td style="padding: 12px 0; border-bottom: 1px solid #f0f0f0; color: #1a1a1a; font-weight: 500;">{data.annual_revenue}</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 12px 0; border-bottom: 1px solid #f0f0f0; color: #666; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px;">Cofounder Dynamics:</td>
+                                    <td style="padding: 12px 0; border-bottom: 1px solid #f0f0f0; color: #1a1a1a;">{dynamics}</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 12px 0; color: #666; vertical-align: top; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px;">Primary Bottleneck:</td>
+                                    <td style="padding: 12px 0; color: #1a1a1a; line-height: 1.6; font-size: 14px;">{bottleneck}</td>
+                                </tr>
+                            </table>
+                            
+                            <h2 style="font-size: 15px; margin-top: 0; margin-bottom: 15px; border-bottom: 2px solid #1a1a1a; padding-bottom: 8px; text-transform: uppercase; color: #1a1a1a; letter-spacing: 0.5px;">AI Closing Intelligence & Strategic Frameworks</h2>
+                            <div style="background-color: #fcfcfc; border-left: 4px solid #ffcc00; border-top: 1px solid #eee; border-right: 1px solid #eee; border-bottom: 1px solid #eee; padding: 25px; font-size: 14px; line-height: 1.7; color: #222; margin-top: 15px; font-style: italic;">
+                                {briefing_html}
+                            </div>
+                        </div>
+                        
+                        <!-- Footer -->
+                        <div style="background-color: #fafafa; border-top: 1px solid #eee; padding: 25px; text-align: center; font-size: 11px; color: #888; line-height: 1.5;">
+                            This report was autonomously compiled by the Sameer Babbar Advisory Concierge Engine.<br>
+                            All content is proprietary, confidential, and prepared for internal briefing prior to alignment calls.
+                        </div>
+                    </div>
+                </div>
+                """
+
                 resend.Emails.send({
                     "from": "advisory@sameerbabbar.com",
                     "to": "sbabbar@sameerbabbar.com",
-                    "subject": f"🚀 HIGH-TICKET LEAD: {data.name}",
-                    "html": f"<h2>Lead Profile</h2><p><strong>Name:</strong> {data.name}<br><strong>Email:</strong> {data.email}<br><strong>Revenue:</strong> {data.annual_revenue}</p><h2>Internal Briefing</h2><p>{evaluation.get('internal_briefing')}</p>"
+                    "subject": f"🚀 HIGH-TICKET LEAD: {data.name} ({data.company_stage})",
+                    "html": email_body
                 })
                 print("Email dispatched to Sameer successfully.")
             except Exception as email_err:
